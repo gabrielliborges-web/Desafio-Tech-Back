@@ -74,7 +74,7 @@ export const movieSchema = z.object({
   ratingAvg: z
     .number()
     .min(0, "A nota média deve ser no mínimo 0.")
-    .max(10, "A nota média deve ser no máximo 10.")
+    .max(100, "A nota média deve ser no máximo 100.")
     .optional(),
   status: z.nativeEnum(MovieStatus).default(MovieStatus.DRAFT),
   visibility: z.nativeEnum(Visibility).default(Visibility.PUBLIC),

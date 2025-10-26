@@ -58,7 +58,7 @@ model Movie {
   budget      Decimal?        @db.Decimal(12,2)
   revenue     Decimal?        @db.Decimal(12,2)
   profit      Decimal?        @db.Decimal(12,2)
-  ratingAvg   Decimal?        @db.Decimal(3,2)
+  ratingAvg   Decimal? @db.Decimal(5,2)
   status      MovieStatus     @default(DRAFT)
   visibility  Visibility      @default(PUBLIC)
   userId      Int

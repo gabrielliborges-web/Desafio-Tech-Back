@@ -14,6 +14,9 @@ export const createMovie = async (data: MovieInput) => {
   const movie = await prisma.movie.create({
     data: {
       ...parsed,
+      releaseDate: parsed.releaseDate
+        ? new Date(parsed.releaseDate)
+        : undefined,
       genres: {
         create: parsed.genres?.map((g) => ({
           genre: {

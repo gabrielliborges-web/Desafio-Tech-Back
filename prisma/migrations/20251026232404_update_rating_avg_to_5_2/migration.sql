@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Movie" ALTER COLUMN "ratingAvg" SET DATA TYPE DECIMAL(5,2);
