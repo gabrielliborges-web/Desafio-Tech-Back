@@ -46,7 +46,9 @@ model Movie {
   description String?
   releaseDate DateTime?
   duration    Int?
-  imageUrl    String?
+  indicativeRating Int?
+  imageCover  String?
+  imagePoster String?
   linkPreview String?
   actors      Json?
   director    String?
