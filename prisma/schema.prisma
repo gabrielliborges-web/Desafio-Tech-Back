@@ -27,7 +27,7 @@ model User {
   name        String
   email       String          @unique
   password    String
-  theme       Theme?          @default(LIGHT)
+  theme       Theme?          @default(DARK)
   movies      Movie[]
   ratings     Rating[]
   comments    Comment[]
