@@ -1,0 +1,103 @@
+import { Request, Response } from "express";
+import * as MovieService from "../services/movie.service";
+import { z } from "zod";
+import {
+  movieSchema,
+  movieUpdateSchema,
+  movieFilterSchema,
+} from "../validators/movie.validator";
+
+export const createMovie = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const parsed = movieSchema.parse(req.body);
+    const result = await MovieService.createMovie(parsed);
+    res.status(201).json(result);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        errors: error.issues.map((i) => ({
+          path: i.path.join("."),
+          message: i.message,
+          expected: (i as any).expected,
+          received: (i as any).received,
+        })),
+      });
+      return;
+    }
+
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getAllMovies = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const parsed = movieFilterSchema.parse(req.query);
+    const result = await MovieService.getAllMovies(parsed);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        errors: error.issues.map((i) => i.message),
+      });
+      return;
+    }
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const getMovieById = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await MovieService.getMovieById(id);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(404).json({ error: error.message });
+  }
+};
+
+export const updateMovie = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+
+    const movieId = Number(id);
+
+    const parsed = movieUpdateSchema.parse(req.body);
+    const result = await MovieService.updateMovie(movieId, parsed);
+    res.status(200).json(result);
+  } catch (error: any) {
+    if (error instanceof z.ZodError) {
+      res.status(400).json({
+        errors: error.issues.map((i) => i.message),
+      });
+      return;
+    }
+    res.status(400).json({ error: error.message });
+  }
+};
+
+export const deleteMovie = async (
+  req: Request,
+  res: Response
+): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const movieId = Number(id);
+
+    const result = await MovieService.deleteMovie(movieId);
+    res.status(200).json(result);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+};

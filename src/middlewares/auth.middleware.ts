@@ -1,21 +1,20 @@
-import { Request, Response, NextFunction } from "express";
+import { RequestHandler } from "express";
 import { verifyToken } from "../utils/jwt";
 
-export function requireAuth(req: Request, res: Response, next: NextFunction) {
+export const requireAuth: RequestHandler = (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(" ")[1];
 
   if (!token) {
-    return res.status(401).json({ error: "Token não fornecido." });
+    res.status(401).json({ error: "Token não fornecido." });
+    return;
   }
 
   try {
     const decoded = verifyToken(token);
-
     (req as any).userId = decoded.sub;
-
     next();
-  } catch (err) {
-    return res.status(401).json({ error: "Token inválido ou expirado." });
+  } catch {
+    res.status(401).json({ error: "Token inválido ou expirado." });
   }
-}
+};

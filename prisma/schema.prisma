@@ -23,7 +23,7 @@ enum Visibility {
 }
 
 model User {
-  id          String          @id @default(uuid())
+  id        Int     @id @default(autoincrement())
   name        String
   email       String          @unique
   password    String
@@ -39,7 +39,7 @@ model User {
 }
 
 model Movie {
-  id          String          @id @default(uuid())
+  id          Int             @id @default(autoincrement())
   title       String
   tagline     String
   originalTitle String?
@@ -61,7 +61,7 @@ model Movie {
   ratingAvg   Decimal?        @db.Decimal(3,2)
   status      MovieStatus     @default(DRAFT)
   visibility  Visibility      @default(PUBLIC)
-  userId      String
+  userId      Int
   user        User            @relation(fields: [userId], references: [id])
   genres      MovieGenre[]
   ratings     Rating[]
@@ -72,23 +72,23 @@ model Movie {
 }
 
 model Genre {
-  id        String       @id @default(uuid())
-  name      String
+  id      Int    @id @default(autoincrement())
+  name      String @unique
   movies    MovieGenre[]
 }
 
 model MovieGenre {
   id        String   @id @default(uuid())
-  movieId   String
-  genreId   String
+  movieId   Int
+  genreId   Int
   movie     Movie    @relation(fields: [movieId], references: [id])
   genre     Genre    @relation(fields: [genreId], references: [id])
 }
 
 model Rating {
   id        String   @id @default(uuid())
-  userId    String
-  movieId   String
+  userId      Int
+  movieId   Int
   score     Int
   comment   String?
   user      User     @relation(fields: [userId], references: [id])
@@ -99,8 +99,8 @@ model Rating {
 
 model Comment {
   id        String    @id @default(uuid())
-  userId    String
-  movieId   String
+  userId      Int
+  movieId   Int
   content   String
   parentId  String?
   user      User      @relation(fields: [userId], references: [id])
@@ -114,8 +114,8 @@ model Comment {
 
 model Like {
   id        String    @id @default(uuid())
-  userId    String
-  movieId   String?
+  userId      Int
+  movieId   Int?
   commentId String?
   user      User      @relation(fields: [userId], references: [id])
   movie     Movie?    @relation(fields: [movieId], references: [id])
@@ -125,7 +125,7 @@ model Like {
 
 model Notification {
   id        String   @id @default(uuid())
-  userId    String
+  userId      Int
   title     String?
   message   String?
   type      String?
@@ -137,7 +137,7 @@ model Notification {
 
 model UserSettings {
   id                   String   @id @default(uuid())
-  userId               String   @unique
+  userId               Int @unique
   theme                Theme?   @default(LIGHT)
   notificationsEnabled Boolean  @default(true)
   user                 User     @relation(fields: [userId], references: [id])

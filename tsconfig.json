@@ -15,6 +15,7 @@
       "@/*": ["*"]
     },
     "resolveJsonModule": true,
+    "ignoreDeprecations": "6.0",
     "isolatedModules": true,
     "typeRoots": ["./node_modules/@types"],
     "lib": ["ESNext"],
