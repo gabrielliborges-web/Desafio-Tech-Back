@@ -62,7 +62,8 @@
  *               properties:
  *                 error:
  *                   type: string
- *                   example: Tema inválido. Valores permitidos: LIGHT ou DARK.
+ *                   example: "Tema inválido. Valores permitidos: LIGHT ou DARK."
+
  *       401:
  *         description: Usuário não autenticado
  *         content:
