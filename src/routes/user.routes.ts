@@ -4,6 +4,6 @@ import { requireAuth } from "../middlewares/auth.middleware";
 
 const router = Router();
 
-router.put("/:id/theme", requireAuth, UserController.updateTheme);
+router.put("/theme", requireAuth, UserController.updateTheme);
 
 export default router;
