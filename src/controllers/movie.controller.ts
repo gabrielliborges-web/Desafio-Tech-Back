@@ -74,7 +74,7 @@ export const getMovieById = async (
 };
 
 export const updateMovie = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ): Promise<void> => {
   try {
@@ -83,7 +83,11 @@ export const updateMovie = async (
     const movieId = Number(id);
 
     const parsed = movieUpdateSchema.parse(req.body);
-    const result = await MovieService.updateMovie(movieId, parsed);
+    const result = await MovieService.updateMovie(
+      movieId,
+      parsed,
+      req.user?.id
+    );
     res.status(200).json(result);
   } catch (error: any) {
     if (error instanceof z.ZodError) {

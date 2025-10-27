@@ -134,14 +134,30 @@ export const getMovieById = async (
   return movie;
 };
 
-export const updateMovie = async (id: number, data: Partial<MovieInput>) => {
+export const updateMovie = async (
+  id: number,
+  data: Partial<MovieInput>,
+  userId?: number
+) => {
   const parsed = movieUpdateSchema.parse(data);
 
   const existing = await prisma.movie.findUnique({
     where: { id },
   });
 
-  if (!existing) throw new Error("Filme não encontrado.");
+  if (!existing) {
+    const error: any = new Error("Filme não encontrado.");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (existing.userId !== userId) {
+    const error: any = new Error(
+      "Você não tem permissão para editar este filme."
+    );
+    error.statusCode = 403;
+    throw error;
+  }
 
   const movie = await prisma.movie.update({
     where: { id },
