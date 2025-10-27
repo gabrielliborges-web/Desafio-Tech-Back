@@ -40,7 +40,8 @@ export const createMovie = async (data: MovieInput) => {
 export const getAllMovies = async (query: any, userId?: number | string) => {
   const parsed = movieFilterSchema.parse(query);
 
-  console.log(userId);
+  console.log("User ID recebido:", userId);
+  console.log("Filtros recebidos:", parsed);
 
   const page = Number(parsed.page) || 1;
   const limit = Number(parsed.limit) || 10;
@@ -52,18 +53,113 @@ export const getAllMovies = async (query: any, userId?: number | string) => {
         { title: { contains: parsed.search, mode: "insensitive" } },
         { originalTitle: { contains: parsed.search, mode: "insensitive" } },
         { tagline: { contains: parsed.search, mode: "insensitive" } },
+        { description: { contains: parsed.search, mode: "insensitive" } },
+        { director: { contains: parsed.search, mode: "insensitive" } },
       ],
     }),
-    ...(parsed.visibility && {
-      visibility: parsed.visibility as Visibility,
+
+    ...(parsed.originalTitle && {
+      originalTitle: { contains: parsed.originalTitle, mode: "insensitive" },
     }),
+
+    ...(parsed.director && {
+      director: { contains: parsed.director, mode: "insensitive" },
+    }),
+
+    ...(parsed.language && {
+      language: { contains: parsed.language, mode: "insensitive" },
+    }),
+
+    ...(parsed.country && {
+      country: { contains: parsed.country, mode: "insensitive" },
+    }),
+
+    ...(parsed.visibility && { visibility: parsed.visibility as Visibility }),
+
     ...(parsed.genre && {
       genres: {
         some: {
-          genre: {
-            name: { equals: parsed.genre, mode: Prisma.QueryMode.insensitive },
-          },
+          genre: { name: { equals: parsed.genre, mode: "insensitive" } },
         },
+      },
+    }),
+
+    ...(parsed.indicativeRating && {
+      indicativeRating: { lte: Number(parsed.indicativeRating) },
+    }),
+
+    ...(parsed.releaseDateStart || parsed.releaseDateEnd
+      ? {
+          releaseDate: {
+            ...(parsed.releaseDateStart && {
+              gte: new Date(parsed.releaseDateStart),
+            }),
+            ...(parsed.releaseDateEnd && {
+              lte: new Date(parsed.releaseDateEnd),
+            }),
+          },
+        }
+      : {}),
+
+    ...(parsed.minDuration || parsed.maxDuration
+      ? {
+          duration: {
+            ...(parsed.minDuration && { gte: Number(parsed.minDuration) }),
+            ...(parsed.maxDuration && { lte: Number(parsed.maxDuration) }),
+          },
+        }
+      : {}),
+
+    ...(parsed.minBudget || parsed.maxBudget
+      ? {
+          budget: {
+            ...(parsed.minBudget && { gte: Number(parsed.minBudget) }),
+            ...(parsed.maxBudget && { lte: Number(parsed.maxBudget) }),
+          },
+        }
+      : {}),
+
+    ...(parsed.minRevenue || parsed.maxRevenue
+      ? {
+          revenue: {
+            ...(parsed.minRevenue && { gte: Number(parsed.minRevenue) }),
+            ...(parsed.maxRevenue && { lte: Number(parsed.maxRevenue) }),
+          },
+        }
+      : {}),
+
+    ...(parsed.minProfit || parsed.maxProfit
+      ? {
+          profit: {
+            ...(parsed.minProfit && { gte: Number(parsed.minProfit) }),
+            ...(parsed.maxProfit && { lte: Number(parsed.maxProfit) }),
+          },
+        }
+      : {}),
+
+    ...(parsed.minRatingAvg || parsed.maxRatingAvg
+      ? {
+          ratingAvg: {
+            ...(parsed.minRatingAvg && { gte: Number(parsed.minRatingAvg) }),
+            ...(parsed.maxRatingAvg && { lte: Number(parsed.maxRatingAvg) }),
+          },
+        }
+      : {}),
+
+    ...(parsed.createdAtStart || parsed.createdAtEnd
+      ? {
+          createdAt: {
+            ...(parsed.createdAtStart && {
+              gte: new Date(parsed.createdAtStart),
+            }),
+            ...(parsed.createdAtEnd && { lte: new Date(parsed.createdAtEnd) }),
+          },
+        }
+      : {}),
+
+    ...(parsed.userId && {
+      user: {
+        name: { contains: parsed.userId, mode: "insensitive" },
       },
     }),
   };

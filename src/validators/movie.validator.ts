@@ -95,18 +95,96 @@ export const movieSchema = z.object({
 export const movieUpdateSchema = movieSchema.partial();
 
 export const movieFilterSchema = z.object({
-  search: z.string().optional(),
-  status: z.string().optional(),
-  visibility: z.string().optional(),
-  genre: z.string().optional(),
-  orderBy: z.string().optional(),
-  order: z.enum(["asc", "desc"]).optional(),
-  page: z.preprocess((val) => Number(val), z.number().int().min(1).default(1)),
-  limit: z.preprocess(
-    (val) => Number(val),
-    z.number().int().min(1).max(100).default(10)
+  page: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
   ),
+  limit: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+
+  search: z.string().optional(),
+  originalTitle: z.string().optional(),
+  director: z.string().optional(),
+  language: z.string().optional(),
+  country: z.string().optional(),
+
+  status: z.enum(["DRAFT", "PUBLISHED"]).optional(),
+  visibility: z.enum(["PRIVATE", "PUBLIC"]).optional(),
+  genre: z.string().optional(),
+
+  orderBy: z
+    .enum([
+      "title",
+      "releaseDate",
+      "ratingAvg",
+      "createdAt",
+      "budget",
+      "profit",
+    ])
+    .optional(),
+  order: z.enum(["asc", "desc"]).optional(),
+
+  releaseDateStart: z.string().optional(),
+  releaseDateEnd: z.string().optional(),
+
+  indicativeRating: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+
+  minDuration: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+  maxDuration: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+
+  minBudget: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+  maxBudget: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+
+  minRevenue: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+  maxRevenue: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+
+  minProfit: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+  maxProfit: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+
+  minRatingAvg: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+  maxRatingAvg: z.preprocess(
+    (v) => (v !== undefined && v !== "" ? Number(v) : undefined),
+    z.number().optional()
+  ),
+
+  userId: z.string().optional(),
+
+  createdAtStart: z.string().optional(),
+  createdAtEnd: z.string().optional(),
 });
+
 export type MovieInput = z.infer<typeof movieSchema>;
 export type MovieUpdateInput = z.infer<typeof movieUpdateSchema>;
 export type MovieFilterInput = z.infer<typeof movieFilterSchema>;
