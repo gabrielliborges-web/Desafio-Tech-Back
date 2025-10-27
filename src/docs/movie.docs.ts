@@ -30,46 +30,117 @@
  * @swagger
  * /movie/list:
  *   get:
- *     summary: Lista todos os filmes (com paginação e filtros)
+ *     summary: Lista todos os filmes com paginação, filtros e regras de visibilidade
+ *     description: >
+ *       Retorna uma lista de filmes com base nos filtros aplicados.
+ *       - Se **status** não for informado, retornará apenas filmes **PUBLISHED**.
+ *       - Se **status = DRAFT**, retornará apenas filmes criados pelo usuário autenticado.
+ *       - É necessário um token válido (Bearer) para acesso.
  *     tags: [Movies]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: page
+ *         description: "Página atual da listagem."
  *         schema:
  *           type: integer
+ *           default: 1
  *         example: 1
  *       - in: query
  *         name: limit
+ *         description: "Quantidade máxima de filmes por página."
  *         schema:
  *           type: integer
+ *           default: 10
  *         example: 10
  *       - in: query
  *         name: search
+ *         description: "Busca por título, título original ou tagline."
  *         schema:
  *           type: string
- *         example: inception
+ *         example: "Inception"
  *       - in: query
  *         name: status
+ *         description: "Filtra filmes por status de publicação (DRAFT ou PUBLISHED)."
  *         schema:
  *           type: string
  *           enum: [DRAFT, PUBLISHED]
+ *         example: "PUBLISHED"
  *       - in: query
  *         name: visibility
+ *         description: "Filtra filmes por visibilidade (PUBLIC ou PRIVATE)."
  *         schema:
  *           type: string
  *           enum: [PUBLIC, PRIVATE]
+ *         example: "PUBLIC"
  *       - in: query
  *         name: genre
+ *         description: "Filtra filmes pelo nome do gênero."
  *         schema:
  *           type: string
- *           example: Action
+ *         example: "Action"
+ *       - in: query
+ *         name: orderBy
+ *         description: "Campo de ordenação (exemplo: title, releaseDate, ratingAvg, createdAt)."
+ *         schema:
+ *           type: string
+ *           enum: [title, releaseDate, ratingAvg, createdAt]
+ *         example: "createdAt"
+ *       - in: query
+ *         name: order
+ *         description: "Direção da ordenação (ascendente ou descendente)."
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         example: "desc"
  *     responses:
  *       200:
- *         description: Lista de filmes retornada com sucesso
+ *         description: "Lista de filmes retornada com sucesso."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Movie'
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                       example: 42
+ *                     page:
+ *                       type: integer
+ *                       example: 1
+ *                     limit:
+ *                       type: integer
+ *                       example: 10
+ *                     totalPages:
+ *                       type: integer
+ *                       example: 5
  *       400:
- *         description: Parâmetros de busca inválidos
+ *         description: "Parâmetros de busca inválidos ou erro de validação."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Erro ao carregar lista de filmes."
+ *       401:
+ *         description: "Token inválido ou ausente."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Token não fornecido."
  */
 
 /**
@@ -77,6 +148,11 @@
  * /movie/{id}:
  *   get:
  *     summary: Obtém os detalhes de um filme pelo ID
+ *     description: >
+ *       Retorna as informações completas de um filme, incluindo gêneros, avaliações, comentários e autor.
+ *       - Se o filme estiver com **status = PUBLISHED**, qualquer usuário autenticado pode visualizá-lo.
+ *       - Se o filme estiver com **status = DRAFT**, apenas o criador do filme poderá acessá-lo.
+ *       - É necessário um token Bearer válido para realizar a requisição.
  *     tags: [Movies]
  *     security:
  *       - bearerAuth: []
@@ -84,14 +160,47 @@
  *       - in: path
  *         name: id
  *         required: true
+ *         description: "ID numérico do filme a ser buscado."
  *         schema:
  *           type: integer
  *         example: 1
  *     responses:
  *       200:
- *         description: Filme encontrado
+ *         description: "Filme encontrado com sucesso."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Movie'
+ *       400:
+ *         description: "ID inválido ou erro na requisição."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "ID inválido."
+ *       403:
+ *         description: "Acesso negado. O filme é um rascunho privado de outro usuário."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Acesso negado. Este filme é um rascunho privado."
  *       404:
- *         description: Filme não encontrado
+ *         description: "Filme não encontrado."
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "Filme não encontrado."
  */
 
 /**
