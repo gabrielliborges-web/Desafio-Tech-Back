@@ -207,7 +207,8 @@
  * @swagger
  * /movie/{id}:
  *   put:
- *     summary: Atualiza um filme existente
+ *     summary: Atualiza um filme existente (somente o autor pode editar)
+ *     description: Permite a atualização de um filme existente. Apenas o criador do filme tem permissão para editá-lo.
  *     tags: [Movies]
  *     security:
  *       - bearerAuth: []
@@ -215,6 +216,7 @@
  *       - in: path
  *         name: id
  *         required: true
+ *         description: ID do filme a ser atualizado
  *         schema:
  *           type: integer
  *         example: 1
@@ -229,6 +231,8 @@
  *         description: Filme atualizado com sucesso
  *       400:
  *         description: Dados inválidos
+ *       403:
+ *         description: Usuário não tem permissão para editar este filme
  *       404:
  *         description: Filme não encontrado
  */
@@ -237,7 +241,8 @@
  * @swagger
  * /movie/{id}:
  *   delete:
- *     summary: Remove um filme pelo ID
+ *     summary: Remove um filme existente (somente o autor pode deletar)
+ *     description: Permite a exclusão de um filme pelo ID. Apenas o criador do filme tem permissão para deletá-lo.
  *     tags: [Movies]
  *     security:
  *       - bearerAuth: []
@@ -245,12 +250,15 @@
  *       - in: path
  *         name: id
  *         required: true
+ *         description: ID do filme a ser deletado
  *         schema:
  *           type: integer
  *         example: 1
  *     responses:
  *       200:
  *         description: Filme removido com sucesso
+ *       403:
+ *         description: Usuário não tem permissão para deletar este filme
  *       404:
  *         description: Filme não encontrado
  */
