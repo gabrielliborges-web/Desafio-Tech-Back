@@ -4,6 +4,7 @@ import cors from "cors";
 import express, { Application } from "express";
 import authRoutes from "./routes/auth.routes";
 import moviesRoutes from "./routes/movie.routes";
+import usersRoutes from "./routes/user.routes";
 import { setupSwagger } from "./config/swagger";
 
 const app: Application = express();
@@ -23,6 +24,7 @@ app.use(
 
 app.use("/auth", authRoutes);
 app.use("/movie", moviesRoutes);
+app.use("/user", usersRoutes);
 
 app.get("/", (req, res) => {
   res.send("Desafio-movie-back ON");
