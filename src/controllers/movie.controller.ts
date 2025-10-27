@@ -13,9 +13,12 @@ export const createMovie = async (
   res: Response
 ): Promise<void> => {
   try {
-    const parsed = movieSchema.parse(req.body);
-    // console.log(parsed);
-    const result = await MovieService.createMovie(parsed);
+    const userId = (req as any).user?.id;
+    const result = await MovieService.createMovie(
+      req.body,
+      req.files as any,
+      userId
+    );
     res.status(201).json(result);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
@@ -23,15 +26,17 @@ export const createMovie = async (
         errors: error.issues.map((i) => ({
           path: i.path.join("."),
           message: i.message,
-          expected: (i as any).expected,
-          received: (i as any).received,
         })),
         body: req.body,
       });
       return;
     }
 
-    res.status(400).json({ error: error.message, body: req.body });
+    console.error("Erro ao criar filme:", error.message);
+    res.status(error.statusCode || 500).json({
+      error: error.message || "Erro interno ao criar filme.",
+      body: req.body,
+    });
   }
 };
 

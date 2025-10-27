@@ -6,17 +6,66 @@ import {
   type MovieInput,
 } from "../validators/movie.validator";
 
+import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { s3 } from "../config/awsConfig";
+import { v4 as uuidv4 } from "uuid";
+
 const prisma = new PrismaClient();
 
-export const createMovie = async (data: MovieInput) => {
+export const createMovie = async (
+  data: MovieInput,
+  files?: {
+    imageCover?: Express.Multer.File[];
+    imagePoster?: Express.Multer.File[];
+  },
+  userId?: number
+) => {
   const parsed = movieSchema.parse(data);
+
+  let imageCoverUrl = parsed.imageCover || null;
+  let imagePosterUrl = parsed.imagePoster || null;
+
+  if (files?.imageCover?.[0]) {
+    const file = files.imageCover[0];
+    const uniqueKey = `usuarios/${userId}/movies/${
+      parsed.title
+    }/cover/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME!,
+        Key: uniqueKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+    imageCoverUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
+  }
+
+  if (files?.imagePoster?.[0]) {
+    const file = files.imagePoster[0];
+    const uniqueKey = `usuarios/${userId}/movies/${
+      parsed.title
+    }/poster/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME!,
+        Key: uniqueKey,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+    imagePosterUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
+  }
 
   const movie = await prisma.movie.create({
     data: {
       ...parsed,
+      imageCover: imageCoverUrl || null,
+      imagePoster: imagePosterUrl || null,
       releaseDate: parsed.releaseDate
         ? new Date(parsed.releaseDate)
         : undefined,
+      userId: userId!,
       genres: {
         create: parsed.genres?.map((g) => ({
           genre: {
