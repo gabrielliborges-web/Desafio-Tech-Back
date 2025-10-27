@@ -1,7 +1,7 @@
 import { Router } from "express";
 import * as MovieController from "../controllers/movie.controller";
 import { requireAuth } from "../middlewares/auth.middleware";
-import { upload } from "@/config/multer/multerConfig";
+import { upload } from "../config/multer/multerConfig";
 
 const router = Router();
 
