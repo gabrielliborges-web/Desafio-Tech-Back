@@ -167,8 +167,6 @@ export const getAllMovies = async (query: any, userId?: number | string) => {
   if (parsed.status === "DRAFT") {
     where.status = "DRAFT";
     if (userId) where.userId = Number(userId);
-  } else if (parsed.status === "PUBLISHED") {
-    where.status = "PUBLISHED";
   } else {
     where.status = "PUBLISHED";
   }
