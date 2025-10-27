@@ -28,6 +28,14 @@ export const updateTheme = async (
     throw error;
   }
 
+  if (user.id !== userId) {
+    const error: any = new Error(
+      "Você não tem permissão para alterar o tema de outro usuário."
+    );
+    error.statusCode = 403;
+    throw error;
+  }
+
   const updatedUser = await prisma.user.update({
     where: { id: userId },
     data: { theme },
