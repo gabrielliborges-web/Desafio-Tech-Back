@@ -50,9 +50,9 @@ model Movie {
   imageCover  String?
   imagePoster String?
   linkPreview String?
-  actors      Json?
+  actors     String[]
+  producers  String[]
   director    String?
-  producers   Json?
   language    String?
   country     String?
   budget      Decimal?        @db.Decimal(12,2)

@@ -6,6 +6,7 @@ import {
   movieUpdateSchema,
   movieFilterSchema,
 } from "../validators/movie.validator";
+import { AuthenticatedRequest } from "@/middlewares/auth.middleware";
 
 export const createMovie = async (
   req: Request,
@@ -13,6 +14,7 @@ export const createMovie = async (
 ): Promise<void> => {
   try {
     const parsed = movieSchema.parse(req.body);
+    // console.log(parsed);
     const result = await MovieService.createMovie(parsed);
     res.status(201).json(result);
   } catch (error: any) {
@@ -24,21 +26,22 @@ export const createMovie = async (
           expected: (i as any).expected,
           received: (i as any).received,
         })),
+        body: req.body,
       });
       return;
     }
 
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: error.message, body: req.body });
   }
 };
 
 export const getAllMovies = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ): Promise<void> => {
   try {
     const parsed = movieFilterSchema.parse(req.query);
-    const result = await MovieService.getAllMovies(parsed);
+    const result = await MovieService.getAllMovies(parsed, req.user?.id);
     res.status(200).json(result);
   } catch (error: any) {
     if (error instanceof z.ZodError) {

@@ -96,15 +96,17 @@ export const movieUpdateSchema = movieSchema.partial();
 
 export const movieFilterSchema = z.object({
   search: z.string().optional(),
-  status: movieStatusEnum.optional(),
-  visibility: visibilityEnum.optional(),
+  status: z.string().optional(),
+  visibility: z.string().optional(),
   genre: z.string().optional(),
-  orderBy: z
-    .enum(["title", "releaseDate", "ratingAvg", "createdAt"])
-    .optional(),
+  orderBy: z.string().optional(),
   order: z.enum(["asc", "desc"]).optional(),
+  page: z.preprocess((val) => Number(val), z.number().int().min(1).default(1)),
+  limit: z.preprocess(
+    (val) => Number(val),
+    z.number().int().min(1).max(100).default(10)
+  ),
 });
-
 export type MovieInput = z.infer<typeof movieSchema>;
 export type MovieUpdateInput = z.infer<typeof movieUpdateSchema>;
 export type MovieFilterInput = z.infer<typeof movieFilterSchema>;

@@ -1,4 +1,4 @@
-import { Prisma, PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient, MovieStatus, Visibility } from "@prisma/client";
 import {
   movieSchema,
   movieUpdateSchema,
@@ -37,32 +37,26 @@ export const createMovie = async (data: MovieInput) => {
   return movie;
 };
 
-export const getAllMovies = async (query: any) => {
+export const getAllMovies = async (query: any, userId?: number | string) => {
   const parsed = movieFilterSchema.parse(query);
 
-  const page = Number(query.page) || 1;
-  const limit = Number(query.limit) || 10;
+  console.log(userId);
+
+  const page = Number(parsed.page) || 1;
+  const limit = Number(parsed.limit) || 10;
   const skip = (page - 1) * limit;
 
   const where: Prisma.MovieWhereInput = {
     ...(parsed.search && {
       OR: [
-        {
-          title: {
-            contains: parsed.search,
-            mode: Prisma.QueryMode.insensitive,
-          },
-        },
-        {
-          tagline: {
-            contains: parsed.search,
-            mode: Prisma.QueryMode.insensitive,
-          },
-        },
+        { title: { contains: parsed.search, mode: "insensitive" } },
+        { originalTitle: { contains: parsed.search, mode: "insensitive" } },
+        { tagline: { contains: parsed.search, mode: "insensitive" } },
       ],
     }),
-    ...(parsed.status && { status: parsed.status }),
-    ...(parsed.visibility && { visibility: parsed.visibility }),
+    ...(parsed.visibility && {
+      visibility: parsed.visibility as Visibility,
+    }),
     ...(parsed.genre && {
       genres: {
         some: {
@@ -73,6 +67,15 @@ export const getAllMovies = async (query: any) => {
       },
     }),
   };
+
+  if (parsed.status === "DRAFT") {
+    where.status = "DRAFT";
+    if (userId) where.userId = Number(userId);
+  } else if (parsed.status === "PUBLISHED") {
+    where.status = "PUBLISHED";
+  } else {
+    where.status = "PUBLISHED";
+  }
 
   const [movies, total] = await Promise.all([
     prisma.movie.findMany({
@@ -92,7 +95,9 @@ export const getAllMovies = async (query: any) => {
 
   return {
     data: movies,
+    parsed,
     meta: {
+      userId: userId,
       total,
       page,
       limit,

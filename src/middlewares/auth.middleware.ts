@@ -1,20 +1,41 @@
-import { RequestHandler } from "express";
-import { verifyToken } from "../utils/jwt";
+// src/middlewares/auth.middleware.ts
+import { Request, Response, NextFunction } from "express";
+import jwt from "jsonwebtoken";
 
-export const requireAuth: RequestHandler = (req, res, next) => {
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    id: number;
+    name: string;
+    email: string;
+  };
+}
+
+export const requireAuth = (
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+): void => {
   const authHeader = req.headers.authorization;
-  const token = authHeader?.split(" ")[1];
+  console.log("HEADER RECEBIDO:", req.headers.authorization);
 
-  if (!token) {
+  if (!authHeader) {
     res.status(401).json({ error: "Token não fornecido." });
     return;
   }
 
+  const token = authHeader.split(" ")[1];
+
   try {
-    const decoded = verifyToken(token);
-    (req as any).userId = decoded.sub;
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as {
+      id: number;
+      name: string;
+      email: string;
+    };
+
+    req.user = decoded;
     next();
-  } catch {
-    res.status(401).json({ error: "Token inválido ou expirado." });
+  } catch (err) {
+    res.status(401).json({ error: "Token inválido." });
+    return;
   }
 };
