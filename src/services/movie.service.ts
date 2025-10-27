@@ -106,9 +106,11 @@ export const getAllMovies = async (query: any, userId?: number | string) => {
   };
 };
 
-export const getMovieById = async (id: string | number) => {
+export const getMovieById = async (
+  id: string | number,
+  userId?: number | string
+) => {
   const movieId = Number(id);
-
   if (isNaN(movieId)) throw new Error("ID inválido.");
 
   const movie = await prisma.movie.findUnique({
@@ -122,6 +124,13 @@ export const getMovieById = async (id: string | number) => {
   });
 
   if (!movie) throw new Error("Filme não encontrado.");
+
+  if (movie.status === "DRAFT" && movie.userId !== Number(userId)) {
+    const err = new Error("Acesso negado. Este filme é um rascunho privado.");
+    (err as any).statusCode = 403;
+    throw err;
+  }
+
   return movie;
 };
 

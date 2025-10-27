@@ -55,15 +55,21 @@ export const getAllMovies = async (
 };
 
 export const getMovieById = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ): Promise<void> => {
   try {
-    const { id } = req.params;
-    const result = await MovieService.getMovieById(id);
+    const result = await MovieService.getMovieById(req.params.id, req.user?.id);
     res.status(200).json(result);
   } catch (error: any) {
-    res.status(404).json({ error: error.message });
+    console.error("Erro ao buscar filme:", error.message);
+
+    if (error.statusCode === 403) {
+      res.status(403).json({ error: error.message });
+      return;
+    }
+
+    res.status(400).json({ error: error.message });
   }
 };
 
