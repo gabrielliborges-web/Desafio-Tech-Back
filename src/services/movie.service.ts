@@ -170,17 +170,27 @@ export const updateMovie = async (id: number, data: Partial<MovieInput>) => {
   return movie;
 };
 
-export const deleteMovie = async (id: number) => {
+export const deleteMovie = async (id: number, userId?: number) => {
   const existing = await prisma.movie.findUnique({
     where: { id },
-    include: { genres: true },
+    include: { user: true },
   });
 
-  if (!existing) throw new Error("Filme não encontrado.");
+  if (!existing) {
+    const error: any = new Error("Filme não encontrado.");
+    error.statusCode = 404;
+    throw error;
+  }
 
-  await prisma.movie.delete({
-    where: { id },
-  });
+  if (existing.userId !== userId) {
+    const error: any = new Error(
+      "Você não tem permissão para deletar este filme."
+    );
+    error.statusCode = 403;
+    throw error;
+  }
+
+  await prisma.movie.delete({ where: { id } });
 
   return { message: "Filme deletado com sucesso." };
 };

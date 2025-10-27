@@ -97,16 +97,20 @@ export const updateMovie = async (
 };
 
 export const deleteMovie = async (
-  req: Request,
+  req: AuthenticatedRequest,
   res: Response
 ): Promise<void> => {
   try {
-    const { id } = req.params;
-    const movieId = Number(id);
+    const id = Number(req.params.id);
+    const userId = req.user?.id;
 
-    const result = await MovieService.deleteMovie(movieId);
+    const result = await MovieService.deleteMovie(id, userId);
     res.status(200).json(result);
   } catch (error: any) {
-    res.status(400).json({ error: error.message });
+    console.error("Erro ao deletar filme:", error.message);
+
+    res.status(error.statusCode || 400).json({
+      error: error.message || "Erro ao deletar o filme.",
+    });
   }
 };
