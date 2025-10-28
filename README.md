@@ -415,6 +415,21 @@ Essas credenciais permitem que o backend crie o agendamento dinamicamente.
 4. A **Lambda envia o e-mail** de notificação com os detalhes do filme via Nodemailer.
 5. Tudo ocorre automaticamente, sem precisar manter o servidor ativo.
 
+O backend agora conta com um módulo de notificações automáticas integradas via Socket.IO.
+
+🔧 Como funciona
+
+Sempre que um filme público e publicado é criado:
+
+Uma entrada é salva na tabela Notification
+
+Um evento newNotification é emitido via Socket.IO para todos os clientes conectados
+
+🔌 Endpoints relacionados
+
+Nenhum novo endpoint é necessário.
+As notificações são entregues automaticamente via socket.
+
 ---
 
 ## 🧠 Dicas úteis
