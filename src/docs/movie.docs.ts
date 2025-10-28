@@ -9,9 +9,17 @@
  * @swagger
  * /movie/create:
  *   post:
- *     summary: Cria um novo filme com upload de imagens
+ *     summary: Cria um novo filme com upload de imagens e notificação em tempo real
  *     description: >
- *       Cria um novo registro de filme e realiza upload das imagens de capa e pôster para o AWS S3.
+ *       Cria um novo registro de filme, realiza upload das imagens (capa e pôster) para o AWS S3
+ *       e, caso o filme seja **público** e esteja com status **PUBLISHED**, dispara automaticamente
+ *       uma notificação global em tempo real para todos os usuários conectados via **Socket.IO**.
+ *       <br><br>
+ *       🔔 **Notificações em tempo real**
+ *       <br>
+ *       - Quando `visibility = PUBLIC` e `status = PUBLISHED`, o backend:
+ *         - Registra uma entrada na tabela `Notification` no banco de dados;
+ *         - Emite o evento `newMovie` com os detalhes da notificação para todos os clientes conectados.
  *       <br><br>
  *       É necessário enviar o corpo da requisição como **multipart/form-data** contendo:
  *       - Dados textuais do filme (campos obrigatórios e opcionais);
@@ -31,26 +39,26 @@
  *             properties:
  *               title:
  *                 type: string
- *                 example: Inception
+ *                 example: Interstellar
  *               tagline:
  *                 type: string
- *                 example: Your mind is the scene of the crime
+ *                 example: "Mankind was born on Earth. It was never meant to die here."
  *               description:
  *                 type: string
- *                 example: A skilled thief who steals corporate secrets through dream-sharing technology.
+ *                 example: A group of explorers travel through a wormhole in space in an attempt to ensure humanity's survival.
  *               releaseDate:
  *                 type: string
  *                 format: date
- *                 example: 2010-07-16
+ *                 example: 2014-11-07
  *               duration:
  *                 type: integer
- *                 example: 148
+ *                 example: 169
  *               indicativeRating:
  *                 type: integer
- *                 example: 14
+ *                 example: 12
  *               linkPreview:
  *                 type: string
- *                 example: https://www.youtube.com/watch?v=YoHD9XEInc0
+ *                 example: https://www.youtube.com/watch?v=zSWdZVtXT7E
  *               language:
  *                 type: string
  *                 example: English
@@ -59,15 +67,15 @@
  *                 example: USA
  *               budget:
  *                 type: number
- *                 example: 160000000
+ *                 example: 165000000
  *               revenue:
  *                 type: number
- *                 example: 829895144
+ *                 example: 677471339
  *               actors:
  *                 type: array
  *                 items:
  *                   type: string
- *                 example: ["Leonardo DiCaprio", "Joseph Gordon-Levitt"]
+ *                 example: ["Matthew McConaughey", "Anne Hathaway", "Jessica Chastain"]
  *               producers:
  *                 type: array
  *                 items:
@@ -81,7 +89,7 @@
  *                 example: Sci-Fi
  *               genres[1].name:
  *                 type: string
- *                 example: Thriller
+ *                 example: Adventure
  *               status:
  *                 type: string
  *                 enum: [DRAFT, PUBLISHED]
@@ -93,14 +101,14 @@
  *               imageCover:
  *                 type: string
  *                 format: binary
- *                 description: Imagem de capa do filme (upload)
+ *                 description: Imagem de capa do filme (upload opcional)
  *               imagePoster:
  *                 type: string
  *                 format: binary
- *                 description: Imagem do pôster do filme (upload)
+ *                 description: Imagem do pôster do filme (upload opcional)
  *     responses:
  *       201:
- *         description: Filme criado com sucesso
+ *         description: Filme criado com sucesso e notificação emitida (se aplicável)
  *         content:
  *           application/json:
  *             schema:
@@ -108,16 +116,22 @@
  *               properties:
  *                 id:
  *                   type: integer
- *                   example: 12
+ *                   example: 15
  *                 title:
  *                   type: string
- *                   example: Inception
+ *                   example: Interstellar
+ *                 status:
+ *                   type: string
+ *                   example: PUBLISHED
+ *                 visibility:
+ *                   type: string
+ *                   example: PUBLIC
  *                 imageCover:
  *                   type: string
- *                   example: https://bucket.s3.region.amazonaws.com/usuarios/1/movies/Inception/cover/uuid-cover.jpg
+ *                   example: https://bucket.s3.region.amazonaws.com/usuarios/1/movies/Interstellar/cover/uuid-cover.jpg
  *                 imagePoster:
  *                   type: string
- *                   example: https://bucket.s3.region.amazonaws.com/usuarios/1/movies/Inception/poster/uuid-poster.jpg
+ *                   example: https://bucket.s3.region.amazonaws.com/usuarios/1/movies/Interstellar/poster/uuid-poster.jpg
  *                 user:
  *                   type: object
  *                   properties:
@@ -132,42 +146,51 @@
  *                       example: gabi@example.com
  *       400:
  *         description: Erro de validação ou dados inválidos
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 errors:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       path:
- *                         type: string
- *                         example: duration
- *                       message:
- *                         type: string
- *                         example: A duração deve ser um número inteiro (em minutos).
  *       401:
  *         description: Usuário não autenticado
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Usuário não autenticado.
  *       500:
  *         description: Erro interno ao criar filme
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 error:
- *                   type: string
- *                   example: Erro interno ao criar filme.
+ */
+
+/**
+ * @swagger
+ * /movie/{id}:
+ *   put:
+ *     summary: Atualiza um filme existente (com reenvio de notificação, se aplicável)
+ *     description: >
+ *       Atualiza os dados de um filme existente, permitindo também substituir as imagens (capa e pôster)
+ *       e reagendar notificações automáticas.
+ *       <br><br>
+ *       - Apenas o criador do filme pode atualizá-lo.
+ *       - Imagens antigas são removidas automaticamente do S3 se novas forem enviadas.
+ *       - Caso o filme atualizado tenha `status = PUBLISHED` e `visibility = PUBLIC`,
+ *         uma nova notificação será registrada e enviada via **Socket.IO**.
+ *     tags: [Movies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         description: ID do filme a ser atualizado
+ *         schema:
+ *           type: integer
+ *         example: 1
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             $ref: '#/components/schemas/MovieUpdate'
+ *     responses:
+ *       200:
+ *         description: Filme atualizado com sucesso
+ *       400:
+ *         description: Dados inválidos
+ *       403:
+ *         description: Usuário não tem permissão para editar este filme
+ *       404:
+ *         description: Filme não encontrado
  */
 
 /**
@@ -350,45 +373,6 @@
 /**
  * @swagger
  * /movie/{id}:
- *   put:
- *     summary: Atualiza um filme existente (somente o autor pode editar)
- *     description: >
- *       Atualiza os dados de um filme existente, permitindo também substituir as imagens (capa e pôster).
- *       <br><br>
- *       - Apenas o criador do filme pode atualizá-lo.
- *       - Imagens antigas são removidas automaticamente do S3 se novas forem enviadas.
- *       - Campos não enviados permanecem inalterados.
- *     tags: [Movies]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         description: ID do filme a ser atualizado
- *         schema:
- *           type: integer
- *         example: 1
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             $ref: '#/components/schemas/MovieUpdate'
- *     responses:
- *       200:
- *         description: Filme atualizado com sucesso
- *       400:
- *         description: Dados inválidos
- *       403:
- *         description: Usuário não tem permissão para editar este filme
- *       404:
- *         description: Filme não encontrado
- */
-
-/**
- * @swagger
- * /movie/{id}:
  *   delete:
  *     summary: Remove um filme existente (somente o autor pode deletar)
  *     description: >
@@ -538,4 +522,254 @@
  *       type: http
  *       scheme: bearer
  *       bearerFormat: JWT
+ */
+
+/**
+ * @swagger
+ * tags:
+ *   name: Movies
+ *   description: Endpoints relacionados aos filmes
+ */
+
+/**
+ * @swagger
+ * /movies:
+ *   get:
+ *     summary: Lista todos os filmes públicos e privados do usuário logado
+ *     description: Retorna filmes públicos e os privados pertencentes ao usuário logado, com suporte a filtros e paginação.
+ *     tags: [Movies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Texto para busca (título, descrição, diretor etc.)
+ *       - in: query
+ *         name: genre
+ *         schema:
+ *           type: string
+ *         description: Filtro por gênero
+ *       - in: query
+ *         name: visibility
+ *         schema:
+ *           type: string
+ *           enum: [PUBLIC, PRIVATE]
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Página atual
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Limite de registros por página
+ *     responses:
+ *       200:
+ *         description: Lista de filmes retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Movie'
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       401:
+ *         description: Token inválido ou ausente.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+
+/**
+ * @swagger
+ * /movies/user:
+ *   get:
+ *     summary: Lista todos os filmes do usuário logado
+ *     description: Retorna apenas os filmes criados pelo usuário autenticado, com suporte a filtros e paginação.
+ *     tags: [Movies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Texto para busca (título, descrição etc.)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [DRAFT, PUBLISHED]
+ *         description: Filtro por status do filme
+ *       - in: query
+ *         name: visibility
+ *         schema:
+ *           type: string
+ *           enum: [PUBLIC, PRIVATE]
+ *         description: Filtro por visibilidade
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Página atual
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Limite de registros por página
+ *     responses:
+ *       200:
+ *         description: Lista de filmes do usuário retornada com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Movie'
+ *                 meta:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: integer
+ *                     page:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     totalPages:
+ *                       type: integer
+ *       401:
+ *         description: Token inválido ou ausente.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+
+/**
+ * @swagger
+ * /movies/{id}/status:
+ *   patch:
+ *     summary: Atualiza o status de um filme (rascunho ou publicado)
+ *     description: Permite alternar o status do filme entre **DRAFT** e **PUBLISHED**.
+ *     tags: [Movies]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         schema:
+ *           type: integer
+ *         required: true
+ *         description: ID do filme a ser atualizado.
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               status:
+ *                 type: string
+ *                 enum: [DRAFT, PUBLISHED]
+ *                 example: PUBLISHED
+ *     responses:
+ *       200:
+ *         description: Status atualizado com sucesso.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Status do filme atualizado para PUBLISHED."
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                     title:
+ *                       type: string
+ *                     status:
+ *                       type: string
+ *                     updatedAt:
+ *                       type: string
+ *                       format: date-time
+ *       401:
+ *         description: Token inválido ou ausente.
+ *       404:
+ *         description: Filme não encontrado.
+ *       403:
+ *         description: Usuário não tem permissão para editar o filme.
+ *       500:
+ *         description: Erro interno do servidor.
+ */
+
+/**
+ * @swagger
+ * components:
+ *   schemas:
+ *     Movie:
+ *       type: object
+ *       properties:
+ *         id:
+ *           type: integer
+ *         title:
+ *           type: string
+ *         tagline:
+ *           type: string
+ *         description:
+ *           type: string
+ *         releaseDate:
+ *           type: string
+ *           format: date
+ *         status:
+ *           type: string
+ *           enum: [DRAFT, PUBLISHED]
+ *         visibility:
+ *           type: string
+ *           enum: [PUBLIC, PRIVATE]
+ *         imageCover:
+ *           type: string
+ *         imagePoster:
+ *           type: string
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
+ *         user:
+ *           type: object
+ *           properties:
+ *             id:
+ *               type: integer
+ *             name:
+ *               type: string
+ *         genres:
+ *           type: array
+ *           items:
+ *             type: object
+ *             properties:
+ *               genre:
+ *                 type: object
+ *                 properties:
+ *                   name:
+ *                     type: string
  */

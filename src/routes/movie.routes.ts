@@ -15,6 +15,8 @@ router.post(
   MovieController.createMovie
 );
 router.get("/list", requireAuth, MovieController.getAllMovies);
+router.get("/user", requireAuth, MovieController.getUserMovies);
+
 router.get("/:id", requireAuth, MovieController.getMovieById);
 
 router.put(
@@ -28,5 +30,6 @@ router.put(
 );
 
 router.delete("/:id", requireAuth, MovieController.deleteMovie);
+router.patch("/:id/status", requireAuth, MovieController.updateMovieStatus);
 
 export default router;

@@ -183,3 +183,47 @@ export const deleteMovie = async (
     });
   }
 };
+
+export const getUserMovies = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const userId = Number(req?.user?.id);
+    const result = await MovieService.getUserMovies(req.query, userId);
+    res.status(200).json(result);
+  } catch (error: any) {
+    console.error("Erro ao listar filmes do usuário:", error);
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "Erro interno do servidor." });
+  }
+};
+
+export const updateMovieStatus = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  try {
+    const userId = Number(req?.user?.id);
+    const { id } = req.params;
+    const { status, visibility } = req.body;
+
+    const movie = await MovieService.updateMovieStatus(
+      Number(id),
+      userId,
+      status,
+      visibility
+    );
+
+    res.status(200).json({
+      message: `Filme atualizado com sucesso.`,
+      data: movie,
+    });
+  } catch (error: any) {
+    console.error("Erro ao atualizar status/visibilidade do filme:", error);
+    res
+      .status(error.statusCode || 500)
+      .json({ message: error.message || "Erro interno do servidor." });
+  }
+};

@@ -98,8 +98,6 @@ export const createMovie = async (data, files, userId, io?: any) => {
     if (io) {
       io.emit("newMovie", notification);
     }
-
-    console.log("📢 Notificação global criada e emitida:", notification.title);
   }
 
   return movie;
@@ -515,4 +513,92 @@ export const deleteMovie = async (id: number, userId?: number) => {
   });
 
   return { message: "Filme e imagens deletados com sucesso." };
+};
+
+export const getUserMovies = async (
+  query: MovieFilterInput,
+  userId: number
+) => {
+  const parsed = movieFilterSchema.parse(query);
+
+  const page = Number(parsed.page) || 1;
+  const limit = Number(parsed.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.MovieWhereInput = {
+    userId,
+    ...(parsed.search && {
+      OR: [
+        { title: { contains: parsed.search, mode: "insensitive" } },
+        { originalTitle: { contains: parsed.search, mode: "insensitive" } },
+        { tagline: { contains: parsed.search, mode: "insensitive" } },
+        { description: { contains: parsed.search, mode: "insensitive" } },
+      ],
+    }),
+    ...(parsed.status && { status: parsed.status as any }),
+    ...(parsed.visibility && { visibility: parsed.visibility as any }),
+  };
+
+  const [movies, total] = await Promise.all([
+    prisma.movie.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: parsed.orderBy
+        ? { [parsed.orderBy]: parsed.order ?? "asc" }
+        : { createdAt: "desc" },
+      include: {
+        genres: { include: { genre: true } },
+        user: { select: { id: true, name: true } },
+      },
+    }),
+    prisma.movie.count({ where }),
+  ]);
+
+  return {
+    data: movies,
+    meta: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+};
+
+export const updateMovieStatus = async (
+  id: number,
+  userId: number,
+  status?: "DRAFT" | "PUBLISHED",
+  visibility?: "PRIVATE" | "PUBLIC"
+) => {
+  const existing = await prisma.movie.findUnique({ where: { id } });
+
+  if (!existing)
+    throw Object.assign(new Error("Filme não encontrado."), {
+      statusCode: 404,
+    });
+
+  if (existing.userId !== userId)
+    throw Object.assign(
+      new Error("Você não tem permissão para editar este filme."),
+      { statusCode: 403 }
+    );
+
+  const movie = await prisma.movie.update({
+    where: { id },
+    data: {
+      ...(status && { status }),
+      ...(visibility && { visibility }),
+    },
+    select: {
+      id: true,
+      title: true,
+      status: true,
+      visibility: true,
+      updatedAt: true,
+    },
+  });
+
+  return movie;
 };
