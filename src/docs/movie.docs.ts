@@ -9,21 +9,165 @@
  * @swagger
  * /movie/create:
  *   post:
- *     summary: Cria um novo filme
+ *     summary: Cria um novo filme com upload de imagens
+ *     description: >
+ *       Cria um novo registro de filme e realiza upload das imagens de capa e pôster para o AWS S3.
+ *       <br><br>
+ *       É necessário enviar o corpo da requisição como **multipart/form-data** contendo:
+ *       - Dados textuais do filme (campos obrigatórios e opcionais);
+ *       - Arquivos `imageCover` e `imagePoster` (opcionais).
  *     tags: [Movies]
  *     security:
- *       - bearerAuth: []
+ *       - bearerAuth: []  # requer token JWT
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
- *             $ref: '#/components/schemas/MovieCreate'
+ *             type: object
+ *             required:
+ *               - title
+ *               - tagline
+ *             properties:
+ *               title:
+ *                 type: string
+ *                 example: Inception
+ *               tagline:
+ *                 type: string
+ *                 example: Your mind is the scene of the crime
+ *               description:
+ *                 type: string
+ *                 example: A skilled thief who steals corporate secrets through dream-sharing technology.
+ *               releaseDate:
+ *                 type: string
+ *                 format: date
+ *                 example: 2010-07-16
+ *               duration:
+ *                 type: integer
+ *                 example: 148
+ *               indicativeRating:
+ *                 type: integer
+ *                 example: 14
+ *               linkPreview:
+ *                 type: string
+ *                 example: https://www.youtube.com/watch?v=YoHD9XEInc0
+ *               language:
+ *                 type: string
+ *                 example: English
+ *               country:
+ *                 type: string
+ *                 example: USA
+ *               budget:
+ *                 type: number
+ *                 example: 160000000
+ *               revenue:
+ *                 type: number
+ *                 example: 829895144
+ *               actors:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Leonardo DiCaprio", "Joseph Gordon-Levitt"]
+ *               producers:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["Emma Thomas", "Christopher Nolan"]
+ *               director:
+ *                 type: string
+ *                 example: Christopher Nolan
+ *               genres[0].name:
+ *                 type: string
+ *                 example: Sci-Fi
+ *               genres[1].name:
+ *                 type: string
+ *                 example: Thriller
+ *               status:
+ *                 type: string
+ *                 enum: [DRAFT, PUBLISHED]
+ *                 example: PUBLISHED
+ *               visibility:
+ *                 type: string
+ *                 enum: [PRIVATE, PUBLIC]
+ *                 example: PUBLIC
+ *               imageCover:
+ *                 type: string
+ *                 format: binary
+ *                 description: Imagem de capa do filme (upload)
+ *               imagePoster:
+ *                 type: string
+ *                 format: binary
+ *                 description: Imagem do pôster do filme (upload)
  *     responses:
  *       201:
  *         description: Filme criado com sucesso
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 id:
+ *                   type: integer
+ *                   example: 12
+ *                 title:
+ *                   type: string
+ *                   example: Inception
+ *                 imageCover:
+ *                   type: string
+ *                   example: https://bucket.s3.region.amazonaws.com/usuarios/1/movies/Inception/cover/uuid-cover.jpg
+ *                 imagePoster:
+ *                   type: string
+ *                   example: https://bucket.s3.region.amazonaws.com/usuarios/1/movies/Inception/poster/uuid-poster.jpg
+ *                 user:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: integer
+ *                       example: 1
+ *                     name:
+ *                       type: string
+ *                       example: Gabrielli Borges
+ *                     email:
+ *                       type: string
+ *                       example: gabi@example.com
  *       400:
  *         description: Erro de validação ou dados inválidos
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       path:
+ *                         type: string
+ *                         example: duration
+ *                       message:
+ *                         type: string
+ *                         example: A duração deve ser um número inteiro (em minutos).
+ *       401:
+ *         description: Usuário não autenticado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Usuário não autenticado.
+ *       500:
+ *         description: Erro interno ao criar filme
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: Erro interno ao criar filme.
  */
 
 /**

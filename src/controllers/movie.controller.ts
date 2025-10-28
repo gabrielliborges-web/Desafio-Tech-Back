@@ -6,8 +6,8 @@ import {
   movieUpdateSchema,
   movieFilterSchema,
 } from "../validators/movie.validator";
-import { AuthenticatedRequest } from "@/middlewares/auth.middleware";
-import { parseArray, parseGenres } from "@/utils/parseArray";
+import { AuthenticatedRequest } from "../middlewares/auth.middleware";
+import { parseArray, parseGenres } from "../utils/parseArray";
 
 export const createMovie = async (
   req: Request,
