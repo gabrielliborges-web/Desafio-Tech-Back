@@ -61,6 +61,7 @@ model Movie {
   ratingAvg   Decimal? @db.Decimal(5,2)
   status      MovieStatus     @default(DRAFT)
   visibility  Visibility      @default(PUBLIC)
+  scheduleName String? 
   userId      Int
   user        User            @relation(fields: [userId], references: [id])
   genres      MovieGenre[]

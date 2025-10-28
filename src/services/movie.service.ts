@@ -10,7 +10,10 @@ import {
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3, safeFileKey, uploadFileToS3 } from "../config/awsConfig";
 import { v4 as uuidv4 } from "uuid";
-import { createEmailSchedule } from "../config/awsScheduler.service";
+import {
+  createEmailSchedule,
+  deleteEmailSchedule,
+} from "../config/awsScheduler.service";
 
 const prisma = new PrismaClient();
 
@@ -63,7 +66,7 @@ export const createMovie = async (data, files, userId) => {
     const now = new Date();
 
     if (releaseDate > now) {
-      await createEmailSchedule(releaseDate, {
+      const scheduleName = await createEmailSchedule(releaseDate, {
         to: movie.user.email,
         movie: {
           title: movie.title,
@@ -73,6 +76,11 @@ export const createMovie = async (data, files, userId) => {
           linkPreview: movie.linkPreview,
           imagePoster: movie.imagePoster,
         },
+      });
+
+      await prisma.movie.update({
+        where: { id: movie.id },
+        data: { scheduleName },
       });
     }
   }
@@ -399,6 +407,47 @@ export const updateMovie = async (
       user: { select: { id: true, name: true, email: true } },
     },
   });
+
+  if (parsed.releaseDate) {
+    const newDate = new Date(parsed.releaseDate);
+    const now = new Date();
+    const hasDateChanged =
+      !existing.releaseDate ||
+      existing.releaseDate.getTime() !== newDate.getTime();
+
+    if (hasDateChanged) {
+      if (existing.scheduleName) {
+        await deleteEmailSchedule(existing.scheduleName);
+      }
+
+      if (newDate > now) {
+        const scheduleName = await createEmailSchedule(newDate, {
+          to: movie.user.email,
+          movie: {
+            title: movie.title,
+            tagline: movie.tagline,
+            description: movie.description,
+            releaseDate: newDate.toISOString(),
+            linkPreview: movie.linkPreview,
+            imagePoster: movie.imagePoster,
+          },
+        });
+
+        await prisma.movie.update({
+          where: { id },
+          data: { scheduleName },
+        });
+      } else {
+        if (existing.scheduleName) {
+          await deleteEmailSchedule(existing.scheduleName);
+          await prisma.movie.update({
+            where: { id },
+            data: { scheduleName: null },
+          });
+        }
+      }
+    }
+  }
 
   return movie;
 };

@@ -1,6 +1,7 @@
 import {
   SchedulerClient,
   CreateScheduleCommand,
+  DeleteScheduleCommand,
 } from "@aws-sdk/client-scheduler";
 
 const schedulerClient = new SchedulerClient({
@@ -43,4 +44,21 @@ export const createEmailSchedule = async (
 
   await schedulerClient.send(command);
   console.log(`✅ Agendamento criado com sucesso: ${scheduleName}`);
+  return scheduleName;
+};
+
+export const deleteEmailSchedule = async (scheduleName: string) => {
+  try {
+    const command = new DeleteScheduleCommand({
+      Name: scheduleName,
+    });
+    await schedulerClient.send(command);
+    console.log(`🗑️ Agendamento removido: ${scheduleName}`);
+  } catch (err: any) {
+    if (err.name === "ResourceNotFoundException") {
+      console.log("Nenhum agendamento antigo encontrado.");
+    } else {
+      console.error("Erro ao deletar agendamento:", err);
+    }
+  }
 };
