@@ -42,11 +42,15 @@ export const createMovie = async (
       userId,
     };
 
+    const io = req.app.get("io");
+
     const result = await MovieService.createMovie(
       parsedBody,
       req.files as any,
-      userId
+      userId,
+      io
     );
+
     res.status(201).json(result);
   } catch (error: any) {
     if (error instanceof z.ZodError) {

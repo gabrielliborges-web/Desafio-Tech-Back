@@ -17,7 +17,7 @@ import {
 
 const prisma = new PrismaClient();
 
-export const createMovie = async (data, files, userId) => {
+export const createMovie = async (data, files, userId, io?: any) => {
   const parsed = movieSchema.parse(data);
 
   let imageCoverUrl = parsed.imageCover || null;
@@ -83,6 +83,23 @@ export const createMovie = async (data, files, userId) => {
         data: { scheduleName },
       });
     }
+  }
+
+  if (movie.visibility === "PUBLIC" && movie.status === "PUBLISHED") {
+    const notification = await prisma.notification.create({
+      data: {
+        title: `🎬 Novo filme publicado: ${movie.title}`,
+        message: `${movie.user.name} acabou de publicar o filme "${movie.title}".`,
+        type: "MOVIE_CREATE",
+        link: `/movie/${movie.id}`,
+      },
+    });
+
+    if (io) {
+      io.emit("newMovie", notification);
+    }
+
+    console.log("📢 Notificação global criada e emitida:", notification.title);
   }
 
   return movie;

@@ -126,13 +126,13 @@ model Like {
 
 model Notification {
   id        String   @id @default(uuid())
-  userId      Int
+  userId      Int?
   title     String?
   message   String?
   type      String?
   link      String?
   read      Boolean  @default(false)
-  user      User     @relation(fields: [userId], references: [id])
+  user      User?     @relation(fields: [userId], references: [id])
   createdAt DateTime @default(now())
 }
 
