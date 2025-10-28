@@ -146,7 +146,7 @@ model UserSettings {
 
 model PasswordReset {
   id        String   @id @default(uuid())
-  email     String
+  email     String   @unique
   code      String
   expiresAt DateTime
   used      Boolean  @default(false)
