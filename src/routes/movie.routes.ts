@@ -16,7 +16,17 @@ router.post(
 );
 router.get("/list", requireAuth, MovieController.getAllMovies);
 router.get("/:id", requireAuth, MovieController.getMovieById);
-router.put("/:id", requireAuth, MovieController.updateMovie);
+
+router.put(
+  "/:id",
+  requireAuth,
+  upload.fields([
+    { name: "imageCover", maxCount: 1 },
+    { name: "imagePoster", maxCount: 1 },
+  ]),
+  MovieController.updateMovie
+);
+
 router.delete("/:id", requireAuth, MovieController.deleteMovie);
 
 export default router;

@@ -113,24 +113,51 @@ export const updateMovie = async (
 ): Promise<void> => {
   try {
     const { id } = req.params;
-
     const movieId = Number(id);
+    const userId = req.user?.id;
 
-    const parsed = movieUpdateSchema.parse(req.body);
+    const raw = req.body;
+    const parsedBody = {
+      ...raw,
+      duration: raw.duration ? Number(raw.duration) : undefined,
+      indicativeRating: raw.indicativeRating
+        ? Number(raw.indicativeRating)
+        : undefined,
+      revenue: raw.revenue ? Number(raw.revenue) : undefined,
+      budget: raw.budget ? Number(raw.budget) : undefined,
+      profit: raw.profit ? Number(raw.profit) : undefined,
+      ratingAvg: raw.ratingAvg ? Number(raw.ratingAvg) : undefined,
+      releaseDate: raw.releaseDate
+        ? new Date(raw.releaseDate).toISOString()
+        : undefined,
+      actors: parseArray(raw.actors),
+      producers: parseArray(raw.producers),
+      genres: parseGenres(raw),
+    };
+
     const result = await MovieService.updateMovie(
       movieId,
-      parsed,
-      req.user?.id
+      parsedBody,
+      req.files as any,
+      userId
     );
     res.status(200).json(result);
   } catch (error: any) {
     if (error instanceof z.ZodError) {
       res.status(400).json({
-        errors: error.issues.map((i) => i.message),
+        errors: error.issues.map((i) => ({
+          path: i.path.join("."),
+          message: i.message,
+        })),
+        body: req.body,
       });
       return;
     }
-    res.status(400).json({ error: error.message });
+
+    console.error("Erro ao atualizar filme:", error.message);
+    res.status(error.statusCode || 500).json({
+      error: error.message || "Erro interno ao atualizar filme.",
+    });
   }
 };
 

@@ -6,7 +6,7 @@ import {
   type MovieInput,
 } from "../validators/movie.validator";
 
-import { PutObjectCommand } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3 } from "../config/awsConfig";
 import { v4 as uuidv4 } from "uuid";
 
@@ -280,13 +280,15 @@ export const getMovieById = async (
 export const updateMovie = async (
   id: number,
   data: Partial<MovieInput>,
+  files?: {
+    imageCover?: Express.Multer.File[];
+    imagePoster?: Express.Multer.File[];
+  },
   userId?: number
 ) => {
   const parsed = movieUpdateSchema.parse(data);
 
-  const existing = await prisma.movie.findUnique({
-    where: { id },
-  });
+  const existing = await prisma.movie.findUnique({ where: { id } });
 
   if (!existing) {
     const error: any = new Error("Filme não encontrado.");
@@ -302,10 +304,74 @@ export const updateMovie = async (
     throw error;
   }
 
+  let imageCoverUrl = existing.imageCover;
+  let imagePosterUrl = existing.imagePoster;
+
+  if (files?.imageCover?.[0]) {
+    if (existing.imageCover) {
+      const oldKey = existing.imageCover.split(
+        `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`
+      )[1];
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME!,
+          Key: oldKey,
+        })
+      );
+    }
+
+    const file = files.imageCover[0];
+    const key = `usuarios/${userId}/movies/${
+      parsed.title || existing.title
+    }/cover/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME!,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+    imageCoverUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  }
+
+  if (files?.imagePoster?.[0]) {
+    if (existing.imagePoster) {
+      const oldKey = existing.imagePoster.split(
+        `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`
+      )[1];
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME!,
+          Key: oldKey,
+        })
+      );
+    }
+
+    const file = files.imagePoster[0];
+    const key = `usuarios/${userId}/movies/${
+      parsed.title || existing.title
+    }/poster/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
+    await s3.send(
+      new PutObjectCommand({
+        Bucket: process.env.AWS_BUCKET_NAME!,
+        Key: key,
+        Body: file.buffer,
+        ContentType: file.mimetype,
+      })
+    );
+    imagePosterUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+  }
+
   const movie = await prisma.movie.update({
     where: { id },
     data: {
       ...parsed,
+      imageCover: imageCoverUrl,
+      imagePoster: imagePosterUrl,
+      releaseDate: parsed.releaseDate
+        ? new Date(parsed.releaseDate)
+        : existing.releaseDate,
       genres: parsed.genres
         ? {
             deleteMany: { movieId: id },
@@ -332,7 +398,7 @@ export const updateMovie = async (
 export const deleteMovie = async (id: number, userId?: number) => {
   const existing = await prisma.movie.findUnique({
     where: { id },
-    include: { user: true },
+    include: { user: true, genres: true },
   });
 
   if (!existing) {
@@ -349,7 +415,30 @@ export const deleteMovie = async (id: number, userId?: number) => {
     throw error;
   }
 
-  await prisma.movie.delete({ where: { id } });
+  await prisma.movieGenre.deleteMany({
+    where: { movieId: id },
+  });
 
-  return { message: "Filme deletado com sucesso." };
+  const images = [existing.imageCover, existing.imagePoster].filter(Boolean);
+  for (const img of images) {
+    try {
+      const key = img!.split(
+        `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`
+      )[1];
+      await s3.send(
+        new DeleteObjectCommand({
+          Bucket: process.env.AWS_BUCKET_NAME!,
+          Key: key,
+        })
+      );
+    } catch (err) {
+      console.warn("Falha ao deletar imagem do S3:", err);
+    }
+  }
+
+  await prisma.movie.delete({
+    where: { id },
+  });
+
+  return { message: "Filme e imagens deletados com sucesso." };
 };
