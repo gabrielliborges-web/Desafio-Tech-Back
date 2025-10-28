@@ -4,6 +4,7 @@ import {
   movieUpdateSchema,
   movieFilterSchema,
   type MovieInput,
+  MovieFilterInput,
 } from "../validators/movie.validator";
 
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
@@ -76,17 +77,17 @@ export const createMovie = async (data, files, userId) => {
   return movie;
 };
 
-export const getAllMovies = async (query: any, userId?: number | string) => {
+export const getAllMovies = async (
+  query: MovieFilterInput,
+  userId?: number | string
+) => {
   const parsed = movieFilterSchema.parse(query);
-
-  console.log("User ID recebido:", userId);
-  console.log("Filtros recebidos:", parsed);
 
   const page = Number(parsed.page) || 1;
   const limit = Number(parsed.limit) || 10;
   const skip = (page - 1) * limit;
 
-  const where: Prisma.MovieWhereInput = {
+  let where: Prisma.MovieWhereInput = {
     ...(parsed.search && {
       OR: [
         { title: { contains: parsed.search, mode: "insensitive" } },
@@ -203,11 +204,28 @@ export const getAllMovies = async (query: any, userId?: number | string) => {
     }),
   };
 
-  if (parsed.status === "DRAFT") {
-    where.status = "DRAFT";
-    if (userId) where.userId = Number(userId);
-  } else {
-    where.status = "PUBLISHED";
+  where.OR = [
+    { status: "PUBLISHED", visibility: "PUBLIC" },
+
+    { userId: Number(userId) },
+  ];
+
+  if (parsed.visibility) {
+    if (parsed.visibility === "PRIVATE") {
+      where = {
+        ...where,
+        AND: [{ userId: Number(userId) }, { visibility: "PRIVATE" }],
+      };
+    } else if (parsed.visibility === "PUBLIC") {
+      where = {
+        ...where,
+        AND: [{ visibility: "PUBLIC" }],
+        OR: [
+          { status: "PUBLISHED", visibility: "PUBLIC" },
+          { userId: Number(userId), visibility: "PUBLIC" },
+        ],
+      };
+    }
   }
 
   const [movies, total] = await Promise.all([
