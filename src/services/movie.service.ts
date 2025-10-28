@@ -59,19 +59,22 @@ export const createMovie = async (data, files, userId) => {
   });
 
   if (movie.releaseDate) {
-    const date = new Date(movie.releaseDate);
+    const releaseDate = new Date(movie.releaseDate);
+    const now = new Date();
 
-    await createEmailSchedule(date, {
-      to: movie.user.email,
-      movie: {
-        title: movie.title,
-        tagline: movie.tagline,
-        description: movie.description,
-        releaseDate: movie.releaseDate?.toISOString(),
-        linkPreview: movie.linkPreview,
-        imagePoster: movie.imagePoster,
-      },
-    });
+    if (releaseDate > now) {
+      await createEmailSchedule(releaseDate, {
+        to: movie.user.email,
+        movie: {
+          title: movie.title,
+          tagline: movie.tagline,
+          description: movie.description,
+          releaseDate: movie.releaseDate?.toISOString(),
+          linkPreview: movie.linkPreview,
+          imagePoster: movie.imagePoster,
+        },
+      });
+    }
   }
 
   return movie;
@@ -282,7 +285,15 @@ export const getMovieById = async (
     throw err;
   }
 
-  return movie;
+  const formattedMovie = {
+    ...movie,
+    genres: movie.genres.map((g) => ({
+      id: g.genre.id,
+      name: g.genre.name,
+    })),
+  };
+
+  return formattedMovie;
 };
 
 export const updateMovie = async (
