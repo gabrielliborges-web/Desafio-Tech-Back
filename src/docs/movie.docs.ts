@@ -352,7 +352,12 @@
  * /movie/{id}:
  *   put:
  *     summary: Atualiza um filme existente (somente o autor pode editar)
- *     description: Permite a atualização de um filme existente. Apenas o criador do filme tem permissão para editá-lo.
+ *     description: >
+ *       Atualiza os dados de um filme existente, permitindo também substituir as imagens (capa e pôster).
+ *       <br><br>
+ *       - Apenas o criador do filme pode atualizá-lo.
+ *       - Imagens antigas são removidas automaticamente do S3 se novas forem enviadas.
+ *       - Campos não enviados permanecem inalterados.
  *     tags: [Movies]
  *     security:
  *       - bearerAuth: []
@@ -367,7 +372,7 @@
  *     requestBody:
  *       required: true
  *       content:
- *         application/json:
+ *         multipart/form-data:
  *           schema:
  *             $ref: '#/components/schemas/MovieUpdate'
  *     responses:
@@ -386,7 +391,10 @@
  * /movie/{id}:
  *   delete:
  *     summary: Remove um filme existente (somente o autor pode deletar)
- *     description: Permite a exclusão de um filme pelo ID. Apenas o criador do filme tem permissão para deletá-lo.
+ *     description: >
+ *       Permite a exclusão de um filme pelo ID.
+ *       - Antes da exclusão, remove vínculos em `MovieGenre` para evitar erro de chave estrangeira.
+ *       - Apenas o criador do filme pode deletá-lo.
  *     tags: [Movies]
  *     security:
  *       - bearerAuth: []
@@ -416,7 +424,6 @@
  *       required:
  *         - title
  *         - tagline
- *         - userId
  *       properties:
  *         title:
  *           type: string
@@ -439,10 +446,12 @@
  *           example: 14
  *         imageCover:
  *           type: string
- *           example: https://image.tmdb.org/t/p/w500/inception.jpg
+ *           format: binary
+ *           description: Arquivo de imagem da capa (upload)
  *         imagePoster:
  *           type: string
- *           example: https://image.tmdb.org/t/p/w500/inception-poster.jpg
+ *           format: binary
+ *           description: Arquivo de imagem do pôster (upload)
  *         linkPreview:
  *           type: string
  *           example: https://www.youtube.com/watch?v=YoHD9XEInc0
@@ -471,6 +480,12 @@
  *         revenue:
  *           type: number
  *           example: 825532764
+ *         profit:
+ *           type: number
+ *           example: 100000000
+ *         ratingAvg:
+ *           type: number
+ *           example: 85
  *         status:
  *           type: string
  *           enum: [DRAFT, PUBLISHED]
@@ -484,15 +499,9 @@
  *           items:
  *             type: object
  *             properties:
- *               id:
- *                 type: integer
- *                 example: 1
  *               name:
  *                 type: string
  *                 example: Action
- *         userId:
- *           type: integer
- *           example: 1
  *
  *     MovieUpdate:
  *       type: object
@@ -504,6 +513,19 @@
  *         tagline:
  *           type: string
  *           example: The dream continues
+ *         description:
+ *           type: string
+ *         duration:
+ *           type: integer
+ *           example: 150
+ *         imageCover:
+ *           type: string
+ *           format: binary
+ *           description: Nova imagem de capa (substitui a anterior)
+ *         imagePoster:
+ *           type: string
+ *           format: binary
+ *           description: Novo pôster (substitui o anterior)
  *         status:
  *           type: string
  *           enum: [DRAFT, PUBLISHED]
