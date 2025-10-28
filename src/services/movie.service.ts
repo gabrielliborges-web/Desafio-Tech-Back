@@ -7,19 +7,12 @@ import {
 } from "../validators/movie.validator";
 
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
-import { s3 } from "../config/awsConfig";
+import { s3, safeFileKey, uploadFileToS3 } from "../config/awsConfig";
 import { v4 as uuidv4 } from "uuid";
 
 const prisma = new PrismaClient();
 
-export const createMovie = async (
-  data: MovieInput,
-  files?: {
-    imageCover?: Express.Multer.File[];
-    imagePoster?: Express.Multer.File[];
-  },
-  userId?: number
-) => {
+export const createMovie = async (data, files, userId) => {
   const parsed = movieSchema.parse(data);
 
   let imageCoverUrl = parsed.imageCover || null;
@@ -27,41 +20,21 @@ export const createMovie = async (
 
   if (files?.imageCover?.[0]) {
     const file = files.imageCover[0];
-    const uniqueKey = `usuarios/${userId}/movies/${
-      parsed.title
-    }/cover/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME!,
-        Key: uniqueKey,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      })
-    );
-    imageCoverUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
+    const key = safeFileKey(userId, parsed.title, "cover", file.originalname);
+    imageCoverUrl = await uploadFileToS3(file, key);
   }
 
   if (files?.imagePoster?.[0]) {
     const file = files.imagePoster[0];
-    const uniqueKey = `usuarios/${userId}/movies/${
-      parsed.title
-    }/poster/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME!,
-        Key: uniqueKey,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      })
-    );
-    imagePosterUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${uniqueKey}`;
+    const key = safeFileKey(userId, parsed.title, "poster", file.originalname);
+    imagePosterUrl = await uploadFileToS3(file, key);
   }
 
   const movie = await prisma.movie.create({
     data: {
       ...parsed,
-      imageCover: imageCoverUrl || null,
-      imagePoster: imagePosterUrl || null,
+      imageCover: imageCoverUrl,
+      imagePoster: imagePosterUrl,
       releaseDate: parsed.releaseDate
         ? new Date(parsed.releaseDate)
         : undefined,
@@ -287,80 +260,69 @@ export const updateMovie = async (
   userId?: number
 ) => {
   const parsed = movieUpdateSchema.parse(data);
-
   const existing = await prisma.movie.findUnique({ where: { id } });
 
-  if (!existing) {
-    const error: any = new Error("Filme não encontrado.");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  if (existing.userId !== userId) {
-    const error: any = new Error(
-      "Você não tem permissão para editar este filme."
+  if (!existing)
+    throw Object.assign(new Error("Filme não encontrado."), {
+      statusCode: 404,
+    });
+  if (existing.userId !== userId)
+    throw Object.assign(
+      new Error("Você não tem permissão para editar este filme."),
+      { statusCode: 403 }
     );
-    error.statusCode = 403;
-    throw error;
-  }
 
   let imageCoverUrl = existing.imageCover;
   let imagePosterUrl = existing.imagePoster;
 
   if (files?.imageCover?.[0]) {
+    const file = files.imageCover[0];
     if (existing.imageCover) {
       const oldKey = existing.imageCover.split(
         `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`
       )[1];
-      await s3.send(
-        new DeleteObjectCommand({
-          Bucket: process.env.AWS_BUCKET_NAME!,
-          Key: oldKey,
-        })
-      );
+      if (oldKey) {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME!,
+            Key: oldKey,
+          })
+        );
+      }
     }
 
-    const file = files.imageCover[0];
-    const key = `usuarios/${userId}/movies/${
-      parsed.title || existing.title
-    }/cover/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME!,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      })
+    const key = safeFileKey(
+      userId,
+      parsed.title || existing.title,
+      "cover",
+      file.originalname
     );
-    imageCoverUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    imageCoverUrl = await uploadFileToS3(file, key);
   }
 
   if (files?.imagePoster?.[0]) {
+    const file = files.imagePoster[0];
     if (existing.imagePoster) {
       const oldKey = existing.imagePoster.split(
         `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/`
       )[1];
-      await s3.send(
-        new DeleteObjectCommand({
-          Bucket: process.env.AWS_BUCKET_NAME!,
-          Key: oldKey,
-        })
-      );
+      if (oldKey) {
+        await s3.send(
+          new DeleteObjectCommand({
+            Bucket: process.env.AWS_BUCKET_NAME!,
+            Key: oldKey,
+          })
+        );
+      }
     }
 
-    const file = files.imagePoster[0];
-    const key = `usuarios/${userId}/movies/${
-      parsed.title || existing.title
-    }/poster/${uuidv4()}-${file.originalname}`.replace(/\s+/g, "");
-    await s3.send(
-      new PutObjectCommand({
-        Bucket: process.env.AWS_BUCKET_NAME!,
-        Key: key,
-        Body: file.buffer,
-        ContentType: file.mimetype,
-      })
+    const key = safeFileKey(
+      userId,
+      parsed.title || existing.title,
+      "poster",
+      file.originalname
     );
-    imagePosterUrl = `https://${process.env.AWS_BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    imagePosterUrl = await uploadFileToS3(file, key);
   }
 
   const movie = await prisma.movie.update({
