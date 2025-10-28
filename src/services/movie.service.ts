@@ -9,6 +9,7 @@ import {
 import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3";
 import { s3, safeFileKey, uploadFileToS3 } from "../config/awsConfig";
 import { v4 as uuidv4 } from "uuid";
+import { createEmailSchedule } from "../config/awsScheduler.service";
 
 const prisma = new PrismaClient();
 
@@ -55,6 +56,22 @@ export const createMovie = async (data, files, userId) => {
       user: { select: { id: true, name: true, email: true } },
     },
   });
+
+  if (movie.releaseDate) {
+    const date = new Date(movie.releaseDate);
+
+    await createEmailSchedule(date, {
+      to: movie.user.email,
+      movie: {
+        title: movie.title,
+        tagline: movie.tagline,
+        description: movie.description,
+        releaseDate: movie.releaseDate?.toISOString(),
+        linkPreview: movie.linkPreview,
+        imagePoster: movie.imagePoster,
+      },
+    });
+  }
 
   return movie;
 };
