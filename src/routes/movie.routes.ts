@@ -6,7 +6,7 @@ import { upload } from "../config/multer/multerConfig";
 const router = Router();
 
 router.post(
-  "/movie/create",
+  "/create",
   requireAuth,
   upload.fields([
     { name: "imageCover", maxCount: 1 },

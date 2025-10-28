@@ -38,14 +38,9 @@ export const movieSchema = z.object({
     .max(18, "A classificação indicativa deve ser no máximo 18.")
     .optional(),
 
-  imageCover: z
-    .string()
-    .url("A imagem de capa deve ser uma URL válida.")
-    .optional(),
-  imagePoster: z
-    .string()
-    .url("A imagem do pôster deve ser uma URL válida.")
-    .optional(),
+  imageCover: z.string().optional().nullable(),
+  imagePoster: z.string().optional().nullable(),
+
   linkPreview: z
     .string()
     .url("O link do trailer deve ser uma URL válida.")
@@ -89,7 +84,7 @@ export const movieSchema = z.object({
     .optional()
     .default([]),
 
-  userId: z.number().int().positive("O ID do usuário é obrigatório."),
+  // userId: z.number().int().positive("O ID do usuário é obrigatório."),
 });
 
 export const movieUpdateSchema = movieSchema.partial();

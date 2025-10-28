@@ -7,6 +7,7 @@ import {
   movieFilterSchema,
 } from "../validators/movie.validator";
 import { AuthenticatedRequest } from "@/middlewares/auth.middleware";
+import { parseArray, parseGenres } from "@/utils/parseArray";
 
 export const createMovie = async (
   req: Request,
@@ -14,8 +15,35 @@ export const createMovie = async (
 ): Promise<void> => {
   try {
     const userId = (req as any).user?.id;
+
+    if (!userId) {
+      res.status(401).json({ error: "Usuário não autenticado.", userId });
+      return;
+    }
+
+    const raw = req.body;
+
+    const parsedBody = {
+      ...raw,
+      duration: raw.duration ? Number(raw.duration) : undefined,
+      indicativeRating: raw.indicativeRating
+        ? Number(raw.indicativeRating)
+        : undefined,
+      revenue: raw.revenue ? Number(raw.revenue) : undefined,
+      budget: raw.budget ? Number(raw.budget) : undefined,
+      profit: raw.profit ? Number(raw.profit) : undefined,
+      ratingAvg: raw.ratingAvg ? Number(raw.ratingAvg) : undefined,
+      releaseDate: raw.releaseDate
+        ? new Date(raw.releaseDate).toISOString()
+        : undefined,
+      actors: parseArray(raw.actors),
+      producers: parseArray(raw.producers),
+      genres: parseGenres(raw),
+      userId,
+    };
+
     const result = await MovieService.createMovie(
-      req.body,
+      parsedBody,
       req.files as any,
       userId
     );
@@ -32,11 +60,12 @@ export const createMovie = async (
       return;
     }
 
-    console.error("Erro ao criar filme:", error.message);
+    console.error("Erro ao criar filme:", error);
     res.status(error.statusCode || 500).json({
       error: error.message || "Erro interno ao criar filme.",
       body: req.body,
     });
+    return;
   }
 };
 
