@@ -230,11 +230,19 @@ export const getAllMovies = async (
     }),
   };
 
-  where.OR = [
-    { status: "PUBLISHED", visibility: "PUBLIC" },
+  if (!parsed.status) {
+    where.AND = [{ status: "PUBLISHED" }, { userId: Number(userId) }];
+  } else {
+    where.AND = [
+      {
+        OR: [
+          { status: parsed.status, visibility: "PUBLIC" },
 
-    { userId: Number(userId) },
-  ];
+          { userId: Number(userId), status: parsed.status },
+        ],
+      },
+    ];
+  }
 
   if (parsed.visibility) {
     if (parsed.visibility === "PRIVATE") {
